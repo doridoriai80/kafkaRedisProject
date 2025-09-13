@@ -140,6 +140,109 @@ docker-compose down -v
 > **⚠️ 주의**: Kafka UI가 포트 8080을 사용하므로, Spring Boot 애플리케이션은 포트 8081에서 실행됩니다.  
 > **참고**: Kafka UI는 http://localhost:8080 에서 접근 가능하며, Kafka 토픽과 메시지를 시각적으로 확인할 수 있습니다.
 
+### 3. 서비스 상태 확인
+
+Docker Compose로 실행한 후 각 서비스가 정상적으로 동작하는지 확인하는 방법:
+
+#### 📊 전체 서비스 상태 확인
+```bash
+# 모든 컨테이너 상태 확인
+docker-compose ps
+
+# 예상 결과:
+# NAME                    STATUS
+# kafka-redis-kafka       Up (healthy)
+# kafka-redis-redis       Up (healthy)  
+# kafka-redis-zookeeper   Up
+# kafka-redis-ui          Up
+```
+
+#### 🔍 개별 서비스 상태 확인
+
+**Zookeeper 확인:**
+```bash
+# Zookeeper 연결 테스트
+docker exec kafka-redis-zookeeper zkCli.sh -server localhost:2181 <<< "ls /"
+
+# 또는 간단한 상태 확인 (포트 연결 테스트)
+docker exec kafka-redis-zookeeper bash -c "nc -z localhost 2181 && echo 'Zookeeper port 2181 is open'"
+
+# Zookeeper 로그 확인
+docker exec kafka-redis-zookeeper bash -c "tail -5 /datalog/zookeeper.out"
+```
+
+**Kafka 확인:**
+```bash
+# Kafka 토픽 목록 확인 (연결 테스트)
+docker exec kafka-redis-kafka kafka-topics --bootstrap-server localhost:9092 --list
+
+# Kafka 브로커 정보 확인
+docker exec kafka-redis-kafka kafka-broker-api-versions --bootstrap-server localhost:9092
+
+# 테스트 토픽 생성 및 삭제
+docker exec kafka-redis-kafka kafka-topics --bootstrap-server localhost:9092 --create --topic test-connection --partitions 1 --replication-factor 1
+docker exec kafka-redis-kafka kafka-topics --bootstrap-server localhost:9092 --delete --topic test-connection
+```
+
+**Redis 확인:**
+```bash
+# Redis 연결 테스트
+docker exec kafka-redis-redis redis-cli ping
+# 정상이면 "PONG" 응답
+
+# Redis 정보 확인
+docker exec kafka-redis-redis redis-cli info server
+
+# 간단한 데이터 저장/조회 테스트
+docker exec kafka-redis-redis redis-cli set test-key "Hello Redis"
+docker exec kafka-redis-redis redis-cli get test-key
+docker exec kafka-redis-redis redis-cli del test-key
+
+# 예상 결과:
+# PONG
+# OK
+# Hello Redis
+# 1
+```
+
+**Kafka UI 확인:**
+```bash
+# Kafka UI 접근 확인
+curl -f http://localhost:8080/actuator/health || echo "Kafka UI 접근 불가"
+# 정상이면 {"status":"UP"} 응답
+
+# 브라우저에서 http://localhost:8080 접속하여 웹 인터페이스 확인
+```
+
+#### 🚨 문제 해결
+
+**서비스가 시작되지 않는 경우:**
+```bash
+# 특정 서비스 로그 확인
+docker-compose logs kafka
+docker-compose logs redis
+docker-compose logs zookeeper
+docker-compose logs kafka-ui
+
+# 모든 서비스 재시작
+docker-compose restart
+
+# 완전히 재시작 (데이터 유지)
+docker-compose down && docker-compose up -d
+
+# 데이터까지 삭제하고 재시작
+docker-compose down -v && docker-compose up -d
+```
+
+**포트 충돌 확인:**
+```bash
+# 포트 사용 현황 확인
+lsof -i :2181  # Zookeeper
+lsof -i :6379  # Redis  
+lsof -i :8080  # Kafka UI
+lsof -i :9092  # Kafka
+```
+
 ### 2. 애플리케이션 실행
 
 ```bash
