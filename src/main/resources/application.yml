@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: kafka-redis-project
+  
+  # Kafka configuration
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 3
+      batch-size: 16384
+      linger-ms: 1
+      buffer-memory: 33554432
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      group-id: test-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      fetch-min-size: 1
+      fetch-max-wait: 500
+    listener:
+      ack-mode: manual_immediate
+
+  # Redis configuration
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: # Leave empty if no password
+      timeout: 2000ms
+      jedis:
+        pool:
+          max-active: 10
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+
+# Logging configuration
+logging:
+  level:
+    com.example.kafkaredis: DEBUG
+    org.springframework.kafka: INFO
+    org.springframework.data.redis: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Server configuration
+server:
+  port: 8080
+
+# Management endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
